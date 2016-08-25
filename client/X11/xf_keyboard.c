@@ -479,12 +479,13 @@ BOOL xf_keyboard_handle_special_keys(xfContext* xfc, KeySym keysym)
 		}
 	}
 
-	if ((keysym == XK_c) || (keysym == XK_C))
+	if (keysym == XK_Escape)
 	{
-		if (mod.Ctrl && mod.Alt)
+		if (mod.Super)
 		{
 			/* Ctrl-Alt-C: toggle control */
 			xf_toggle_control(xfc);
+            XUngrabKeyboard(xfc->display, CurrentTime);
 			return TRUE;
 		}
 	}
