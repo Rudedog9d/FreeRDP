@@ -9,28 +9,40 @@ Resources
 ---------
 
 Project website: http://www.freerdp.com/
+
 Issue tracker: https://github.com/FreeRDP/FreeRDP/issues
+
 Sources: https://github.com/FreeRDP/FreeRDP/
+
 Wiki: https://github.com/FreeRDP/FreeRDP/wiki
+
 Downloads and other resources: http://pub.freerdp.com
+
 API doc: http://pub.freerdp.com/api/
 
+
 IRC channel: #freerdp @ irc.freenode.net
+
 Mailing list: https://lists.sourceforge.net/lists/listinfo/freerdp-devel
+
 
 Microsoft Open Specifications
 -----------------------------
 
 Information regarding the Microsoft Open Specifications can be found at:
+
 http://www.microsoft.com/openspecifications/
 
 A list of reference documentation is maintained here:
+
 https://github.com/FreeRDP/FreeRDP/wiki/Reference-Documentation
+
 
 Compilation
 -----------
 
 Instructions on how to get started compiling FreeRDP can be found on the wiki:
+
 https://github.com/FreeRDP/FreeRDP/wiki/Compilation
 
 Simple version:
