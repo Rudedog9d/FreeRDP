@@ -25,6 +25,7 @@
 
 #include <winpr/nt.h>
 #include <winpr/crypto.h>
+#include <winpr/ntlm.h>
 
 #include "../sspi.h"
 
@@ -249,6 +250,7 @@ struct _NTLM_CONTEXT
 	NTLM_NEGOTIATE_MESSAGE NEGOTIATE_MESSAGE;
 	NTLM_CHALLENGE_MESSAGE CHALLENGE_MESSAGE;
 	NTLM_AUTHENTICATE_MESSAGE AUTHENTICATE_MESSAGE;
+	UINT32 MessageIntegrityCheckOffset;
 	SecBuffer NegotiateMessage;
 	SecBuffer ChallengeMessage;
 	SecBuffer AuthenticateMessage;
@@ -271,13 +273,13 @@ struct _NTLM_CONTEXT
 	BYTE ClientSealingKey[16];
 	BYTE ServerSigningKey[16];
 	BYTE ServerSealingKey[16];
-	BYTE MessageIntegrityCheck[16];
-	UINT32 MessageIntegrityCheckOffset;
+	psPeerComputeNtlmHash HashCallback;
+	void* HashCallbackArg;
 };
 typedef struct _NTLM_CONTEXT NTLM_CONTEXT;
 
-NTLM_CONTEXT* ntlm_ContextNew(void);
-void ntlm_ContextFree(NTLM_CONTEXT* context);
+SECURITY_STATUS ntlm_computeProofValue(NTLM_CONTEXT* ntlm, SecBuffer* ntproof);
+SECURITY_STATUS ntlm_computeMicValue(NTLM_CONTEXT* ntlm, SecBuffer* micvalue);
 
 #ifdef WITH_DEBUG_NLA
 #define WITH_DEBUG_NTLM

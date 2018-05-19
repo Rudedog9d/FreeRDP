@@ -48,6 +48,29 @@ static const char certificate_legacy_hosts_file[] = "known_hosts";
 static BOOL certificate_split_line(char* line, char** host, UINT16* port,
 					 char**subject, char**issuer,
 					 char** fingerprint);
+static BOOL certificate_line_is_comment(const char* line, size_t length)
+{
+	while(length > 0)
+	{
+		switch(*line)
+		{
+		case ' ':
+		case '\t':
+			line++;
+			length--;
+			break;
+		case '#':
+			return TRUE;
+		default:
+			return FALSE;
+		}
+	}
+
+	if (length < 1)
+		return TRUE;
+
+	return FALSE;
+}
 
 BOOL certificate_store_init(rdpCertificateStore* certificate_store)
 {
@@ -138,7 +161,7 @@ static int certificate_data_match_legacy(rdpCertificateStore* certificate_store,
 
 	if ((lowSize = GetFileSize(fp, &highSize)) == INVALID_FILE_SIZE)
 	{
-		WLog_ERR(TAG, "GetFileSize(%s) returned %s [%08X]",
+		WLog_ERR(TAG, "GetFileSize(%s) returned %s [0x%08"PRIX32"]",
 			 certificate_store->legacy_file, strerror(errno), GetLastError());
 		CloseHandle(fp);
 		return match;
@@ -184,7 +207,9 @@ static int certificate_data_match_legacy(rdpCertificateStore* certificate_store,
 					hostname, pline);
 			else if (strcmp(hostname, certificate_data->hostname) == 0)
 			{
-				match = strcmp(pline, certificate_data->fingerprint);
+				const int diff = strcmp(pline, certificate_data->fingerprint);
+
+				match = (diff == 0) ? 0 : -1;
 				break;
 			}
 		}
@@ -262,7 +287,7 @@ static int certificate_data_match_raw(rdpCertificateStore* certificate_store,
 
 	if ((lowSize = GetFileSize(fp, &highSize)) == INVALID_FILE_SIZE)
 	{
-		WLog_ERR(TAG, "GetFileSize(%s) returned %s [%08X]",
+		WLog_ERR(TAG, "GetFileSize(%s) returned %s [0x%08"PRIX32"]",
 			 certificate_store->legacy_file, strerror(errno), GetLastError());
 		CloseHandle(fp);
 		return match;
@@ -301,7 +326,10 @@ static int certificate_data_match_raw(rdpCertificateStore* certificate_store,
 
 		if (length > 0)
 		{
-			if (!certificate_split_line(pline, &hostname, &port,
+			if (certificate_line_is_comment(pline, length))
+			{
+			}
+			else if (!certificate_split_line(pline, &hostname, &port,
 								&subject, &issuer, &fingerprint))
 				WLog_WARN(TAG, "Invalid %s entry %s!",
 						certificate_known_hosts_file, pline);
@@ -312,9 +340,12 @@ static int certificate_data_match_raw(rdpCertificateStore* certificate_store,
 				if (port == certificate_data->port)
 				{
 					found = TRUE;
-					match = (strcmp(certificate_data->fingerprint, fingerprint) == 0) ? 0 : -1;
-					if (fingerprint && fprint)
-						*fprint = _strdup(fingerprint);
+					if (fingerprint)
+					{
+						match = (strcmp(certificate_data->fingerprint, fingerprint) == 0) ? 0 : -1;
+						if (fprint)
+							*fprint = _strdup(fingerprint);
+					}
 					if (subject && psubject)
 						crypto_base64_decode(subject, strlen(subject), (BYTE**)psubject, &outLen);
 					if (issuer && pissuer)
@@ -377,7 +408,7 @@ BOOL certificate_data_replace(rdpCertificateStore* certificate_store,
 
 	if ((lowSize = GetFileSize(fp, &highSize)) == INVALID_FILE_SIZE)
 	{
-		WLog_ERR(TAG, "GetFileSize(%s) returned %s [%08X]",
+		WLog_ERR(TAG, "GetFileSize(%s) returned %s [0x%08"PRIX32"]",
 			 certificate_store->legacy_file, strerror(errno), GetLastError());
 		CloseHandle(fp);
 		return FALSE;
@@ -406,7 +437,7 @@ BOOL certificate_data_replace(rdpCertificateStore* certificate_store,
 
 	if (SetFilePointer(fp, 0, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER)
 	{
-		WLog_ERR(TAG, "SetFilePointer(%s) returned %s [%08X]",
+		WLog_ERR(TAG, "SetFilePointer(%s) returned %s [0x%08"PRIX32"]",
 			 certificate_store->file, strerror(errno), GetLastError());
 		free(data);
 		CloseHandle(fp);
@@ -415,7 +446,7 @@ BOOL certificate_data_replace(rdpCertificateStore* certificate_store,
 
 	if (!SetEndOfFile(fp))
 	{
-		WLog_ERR(TAG, "SetEndOfFile(%s) returned %s [%08X]",
+		WLog_ERR(TAG, "SetEndOfFile(%s) returned %s [0x%08"PRIX32"]",
 			 certificate_store->file, strerror(errno), GetLastError());
 		free(data);
 		CloseHandle(fp);
@@ -441,7 +472,10 @@ BOOL certificate_data_replace(rdpCertificateStore* certificate_store,
 			char* issuer = NULL;
 			char* tdata;
 
-			if (!certificate_split_line(pline, &hostname, &port, &subject, &issuer, &fingerprint))
+			if (certificate_line_is_comment(pline, length))
+			{
+			}
+			else if (!certificate_split_line(pline, &hostname, &port, &subject, &issuer, &fingerprint))
 				WLog_WARN(TAG, "Skipping invalid %s entry %s!",
 						certificate_known_hosts_file, pline);
 			else
@@ -454,20 +488,20 @@ BOOL certificate_data_replace(rdpCertificateStore* certificate_store,
 					rc = TRUE;
 				}
 
-				size = _snprintf(NULL, 0, "%s %hu %s %s %s\n", hostname, port, fingerprint, subject, issuer);
+				size = _snprintf(NULL, 0, "%s %"PRIu16" %s %s %s\n", hostname, port, fingerprint, subject, issuer);
 				tdata = malloc(size + 1);
 				if (!tdata)
 				{
-					WLog_ERR(TAG, "malloc(%s) returned %s [%08X]",
+					WLog_ERR(TAG, "malloc(%s) returned %s [0x%08X]",
 						 certificate_store->file, strerror(errno), errno);
 					free(data);
 					CloseHandle(fp);
 					return FALSE;
 				}
 
-				if (_snprintf(tdata, size + 1, "%s %hu %s %s %s\n", hostname, port, fingerprint, subject, issuer) != size)
+				if (_snprintf(tdata, size + 1, "%s %"PRIu16" %s %s %s\n", hostname, port, fingerprint, subject, issuer) != size)
 				{
-					WLog_ERR(TAG, "_snprintf(%s) returned %s [%08X]",
+					WLog_ERR(TAG, "_snprintf(%s) returned %s [0x%08X]",
 						 certificate_store->file, strerror(errno), errno);
 					free(tdata);
 					free(data);
@@ -476,7 +510,7 @@ BOOL certificate_data_replace(rdpCertificateStore* certificate_store,
 				}
 				if (!WriteFile(fp, tdata, size, &written, NULL) || (written != size))
 				{
-					WLog_ERR(TAG, "WriteFile(%s) returned %s [%08X]",
+					WLog_ERR(TAG, "WriteFile(%s) returned %s [0x%08X]",
 						 certificate_store->file, strerror(errno), errno);
 					free(tdata);
 					free(data);
@@ -556,28 +590,28 @@ BOOL certificate_data_print(rdpCertificateStore* certificate_store, rdpCertifica
 
 	if (SetFilePointer(fp, 0, NULL, FILE_END) == INVALID_SET_FILE_POINTER)
 	{
-		WLog_ERR(TAG, "SetFilePointer(%s) returned %s [%08X]",
+		WLog_ERR(TAG, "SetFilePointer(%s) returned %s [0x%08"PRIX32"]",
 			 certificate_store->file, strerror(errno), GetLastError());
 		CloseHandle(fp);
 		return FALSE;
 	}
 
-	size = _snprintf(NULL, 0, "%s %hu %s %s %s\n", certificate_data->hostname, certificate_data->port,
+	size = _snprintf(NULL, 0, "%s %"PRIu16" %s %s %s\n", certificate_data->hostname, certificate_data->port,
 					 certificate_data->fingerprint, certificate_data->subject,
 					 certificate_data->issuer);
 	tdata = malloc(size + 1);
 	if (!tdata)
 	{
-		WLog_ERR(TAG, "malloc(%s) returned %s [%08X]",
+		WLog_ERR(TAG, "malloc(%s) returned %s [0x%08X]",
 			 certificate_store->file, strerror(errno), errno);
 		CloseHandle(fp);
 		return FALSE;
 	}
-	if (_snprintf(tdata, size + 1, "%s %hu %s %s %s\n", certificate_data->hostname, certificate_data->port,
+	if (_snprintf(tdata, size + 1, "%s %"PRIu16" %s %s %s\n", certificate_data->hostname, certificate_data->port,
 				  certificate_data->fingerprint, certificate_data->subject,
 				  certificate_data->issuer) != size)
 	{
-		WLog_ERR(TAG, "_snprintf(%s) returned %s [%08X]",
+		WLog_ERR(TAG, "_snprintf(%s) returned %s [0x%08X]",
 			 certificate_store->file, strerror(errno), errno);
 		free(tdata);
 		CloseHandle(fp);
@@ -585,7 +619,7 @@ BOOL certificate_data_print(rdpCertificateStore* certificate_store, rdpCertifica
 	}
 	if (!WriteFile(fp, tdata, size, &written, NULL) || (written != size))
 	{
-		WLog_ERR(TAG, "WriteFile(%s) returned %s [%08X]",
+		WLog_ERR(TAG, "WriteFile(%s) returned %s [0x%08X]",
 			 certificate_store->file, strerror(errno), errno);
 		free(tdata);
 		CloseHandle(fp);

@@ -21,12 +21,9 @@ set(${MODULE_PREFIX}_SRCS
 	rdpsnd_main.c
 	rdpsnd_main.h)
 
-add_channel_client_library(${MODULE_PREFIX} ${MODULE_NAME} ${CHANNEL_NAME} FALSE "VirtualChannelEntry")
-
-
+add_channel_client_library(${MODULE_PREFIX} ${MODULE_NAME} ${CHANNEL_NAME} FALSE "VirtualChannelEntryEx")
 
 target_link_libraries(${MODULE_NAME} winpr freerdp ${CMAKE_THREAD_LIBS_INIT})
-
 
 set_property(TARGET ${MODULE_NAME} PROPERTY FOLDER "Channels/${CHANNEL_NAME}/Client")
 
@@ -57,3 +54,5 @@ endif()
 if(WITH_OPENSLES)
 	add_channel_client_subsystem(${MODULE_PREFIX} ${CHANNEL_NAME} "opensles" "")
 endif()
+
+add_channel_client_subsystem(${MODULE_PREFIX} ${CHANNEL_NAME} "fake" "")

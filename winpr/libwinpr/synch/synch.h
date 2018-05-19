@@ -28,10 +28,6 @@
 
 #include <winpr/synch.h>
 
-#ifdef __linux__
-#define WITH_POSIX_TIMER	1
-#endif
-
 #include "../handle/handle.h"
 
 #ifndef _WIN32
@@ -79,11 +75,15 @@ struct winpr_event
 };
 typedef struct winpr_event WINPR_EVENT;
 
-#ifdef HAVE_TIMERFD_H
+#ifdef HAVE_SYS_TIMERFD_H
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/timerfd.h>
+#endif
+
+#if defined(__APPLE__)
+#include <dispatch/dispatch.h>
 #endif
 
 struct winpr_timer
@@ -96,10 +96,16 @@ struct winpr_timer
 	BOOL bManualReset;
 	PTIMERAPCROUTINE pfnCompletionRoutine;
 	LPVOID lpArgToCompletionRoutine;
-	
+
 #ifdef WITH_POSIX_TIMER
 	timer_t tid;
 	struct itimerspec timeout;
+#endif
+#if defined(__APPLE__)
+	dispatch_queue_t queue;
+	dispatch_source_t source;
+	int pipe[2];
+	BOOL running;
 #endif
 };
 typedef struct winpr_timer WINPR_TIMER;
@@ -109,7 +115,7 @@ typedef struct winpr_timer_queue_timer WINPR_TIMER_QUEUE_TIMER;
 struct winpr_timer_queue
 {
 	WINPR_HANDLE_DEF();
-	
+
 	pthread_t thread;
 	pthread_attr_t attr;
 	pthread_mutex_t mutex;
@@ -132,7 +138,7 @@ struct winpr_timer_queue_timer
 	DWORD Period;
 	PVOID Parameter;
 	WAITORTIMERCALLBACK Callback;
-	
+
 	int FireCount;
 
 	struct timespec StartTime;

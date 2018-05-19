@@ -15,11 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if (APPLE)
-	# flat_namespace should be avoided, but is required for -undefined warning. Since WinPR currently has
-	# a lot of undefined symbols in use, use this hack until they're filled out.
-	set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-flat_namespace,-undefined,warning")
-endif()
+include(CheckFunctionExists)
 
 set(WINPR_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(WINPR_SRCS "")
@@ -73,6 +69,16 @@ macro (winpr_definition_add)
      set (WINPR_DEFINITIONS ${WINPR_DEFINITIONS} PARENT_SCOPE)
 endmacro()
 
+set(CMAKE_REQUIRED_LIBRARIES rt)
+check_function_exists(timer_create TIMER_CREATE)
+check_function_exists(timer_delete TIMER_DELETE)
+check_function_exists(timer_settime TIMER_SETTIME)
+check_function_exists(timer_gettime TIMER_GETTIME)
+if (TIMER_CREATE AND TIMER_DELETE AND TIMER_SETTIME AND TIMER_GETTIME)
+    add_definitions(-DWITH_POSIX_TIMER)
+	winpr_library_add(rt)
+endif()
+
 if (ANDROID)
     winpr_library_add(log)
 endif()
@@ -120,18 +126,20 @@ endif()
 
 add_library(${MODULE_NAME} ${WINPR_SRCS})
 set_target_properties(${MODULE_NAME} PROPERTIES LINKER_LANGUAGE C)
+set_target_properties(${MODULE_NAME} PROPERTIES OUTPUT_NAME ${MODULE_NAME}${WINPR_API_VERSION})
 if (WITH_LIBRARY_VERSIONING)
     set_target_properties(${MODULE_NAME} PROPERTIES VERSION ${WINPR_VERSION} SOVERSION ${WINPR_API_VERSION})
 endif()
 
 add_definitions(${WINPR_DEFINITIONS})
 if (WIN32)
-target_link_libraries(${MODULE_NAME} ${PUBLIC_KEYWORD} ${WINPR_LIBS})
+	target_link_libraries(${MODULE_NAME} ${PUBLIC_KEYWORD} ${WINPR_LIBS})
 else()
-target_link_libraries(${MODULE_NAME} ${PRIVATE_KEYWORD} ${WINPR_LIBS})
+	target_link_libraries(${MODULE_NAME} ${PRIVATE_KEYWORD} ${WINPR_LIBS})
 endif(WIN32)
 install(TARGETS ${MODULE_NAME} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT libraries EXPORT WinPRTargets)
 if (WITH_DEBUG_SYMBOLS AND MSVC AND BUILD_SHARED_LIBS)
-    install(FILES ${CMAKE_PDB_BINARY_DIR}/${MODULE_NAME}.pdb DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT symbols)
+    get_target_property(OUTPUT_FILENAME ${MODULE_NAME} OUTPUT_NAME)
+    install(FILES ${CMAKE_PDB_BINARY_DIR}/${OUTPUT_FILENAME}.pdb DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT symbols)
 endif()
 set_property(TARGET ${MODULE_NAME} PROPERTY FOLDER "WinPR/libwinpr")
