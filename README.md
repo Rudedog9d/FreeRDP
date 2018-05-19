@@ -46,16 +46,17 @@ Instructions on how to get started compiling FreeRDP can be found on the wiki:
 https://github.com/FreeRDP/FreeRDP/wiki/Compilation
 
 Simple version:
-`sudo apt-get install build-essential git-core cmake xsltproc libssl-dev libx11-dev libxext-dev libxinerama-dev   libxcursor-dev libxdamage-dev libxv-dev libxkbfile-dev libasound2-dev libcups2-dev libxml2 libxml2-dev   libxrandr-dev libgstreamer0.10-dev libgstreamer-plugins-base0.10-dev libxi-dev libgstreamer-plugins-base1.0-dev libavutil-dev libavcodec-dev`
-
-`git clone git@gitlab.ais:davisb/FreeRDP.git`
-
-`mkdir FreeRDP--`
-
-`cd FreeRDP--`
-
-`cmake ../FreeRDP/`
-
-`make`
-
-`sudo make install`
+```
+# Install Dev Deps
+apt-get install build-essential git-core cmake xsltproc libssl-dev libx11-dev libxext-dev libxinerama-dev libxcursor-dev libxdamage-dev libxv-dev libxkbfile-dev libasound2-dev libcups2-dev libxml2 libxml2-dev libxrandr-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libxi-dev libgstreamer-plugins-base1.0-dev libavutil-dev libavcodec-dev
+# Clone Repo
+git clone git@gitlab.ais:davisb/FreeRDP.git
+cd FreeRDP
+# Create build directory
+mkdir build
+cd build
+# Build
+cmake ../
+make
+sudo make install
+```
